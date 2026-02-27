@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-neutral-200 bg-white px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-neutral-200 bg-white px-6">
       {/* Mobile Menu Button */}
       <Button variant="ghost" size="icon" className="lg:hidden">
         <Menu className="h-5 w-5" />
@@ -22,7 +22,7 @@ export function Header() {
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 ml-auto">
         {/* Notifications */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
