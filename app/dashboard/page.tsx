@@ -2,9 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserTable } from '@/components/dashboard/user-table';
 import { Users, Baby, TrendingUp, Calendar, UserPlus } from 'lucide-react';
 
-
-
-
 export default async function DashboardPage() {
   return (
     <div className="space-y-6">

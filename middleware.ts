@@ -9,6 +9,7 @@ export async function middleware(request: NextRequest) {
   const publicRoutes = ['/login'];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
+  // Skip API routes
   if (pathname.startsWith('/api')) {
     return NextResponse.next();
   }
@@ -19,7 +20,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Jika bukan halaman login dan belum login, redirect ke login
-  if (!isPublicRoute && !token && !pathname.startsWith('/api')) {
+  if (!isPublicRoute && !token) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

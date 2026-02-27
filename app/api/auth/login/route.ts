@@ -24,8 +24,12 @@ export async function POST(req: Request) {
 
     const userId = authData.user.id;
 
-    // 2. Cek role di tabel profiles
-    const { data: profile, error: profileError } = await supabaseAdmin.from('users').select('name, role').eq('id_users', userId).single();
+    // 2. Cek role di tabel users
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('users')
+      .select('name, role')
+      .eq('id_users', userId)
+      .single();
 
     if (profileError || !profile) {
       // Sign out jika profile tidak ditemukan
@@ -42,7 +46,6 @@ export async function POST(req: Request) {
     // 4. Set session di cookies
     const cookieStore = await cookies();
 
-    // Set access token
     cookieStore.set('sb-access-token', authData.session.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -51,7 +54,6 @@ export async function POST(req: Request) {
       path: '/',
     });
 
-    // Set refresh token
     cookieStore.set('sb-refresh-token', authData.session.refresh_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -60,7 +62,6 @@ export async function POST(req: Request) {
       path: '/',
     });
 
-    // Set user info
     cookieStore.set('user-id', userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
