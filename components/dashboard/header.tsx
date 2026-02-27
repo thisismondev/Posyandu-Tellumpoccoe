@@ -4,8 +4,9 @@ import { Bell, Search, Menu } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { HeaderProps } from "@/types/header";
 
-export function Header() {
+export function Header({ user }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-neutral-200 bg-white px-6">
       {/* Mobile Menu Button */}
@@ -34,8 +35,8 @@ export function Header() {
         {/* User Profile */}
         <div className="flex items-center gap-3 border-l border-neutral-200 pl-3">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-neutral-900">Admin</p>
-            <p className="text-xs text-neutral-500">admin@innovillage.com</p>
+            <p className="text-sm font-medium text-neutral-900">{user.name}</p>
+            <p className="text-xs text-neutral-500">{user.email}</p>
           </div>
           <div className="h-9 w-9 rounded-full bg-neutral-200 flex items-center justify-center">
             <span className="text-sm font-medium text-neutral-600">A</span>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Users, Baby, FileText, Settings, LogOut, ChevronDown, UserCheck, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -47,7 +47,24 @@ const menuItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [openSubmenu, setOpenSubmenu] = useState<string | null>('Monitoring Anak');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { 
+        method: 'POST' 
+      });
+      router.push('/login');
+      router.refresh();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-neutral-200 bg-white">
@@ -125,16 +142,9 @@ export function Sidebar() {
 
       {/* Logout Button */}
       <div className="absolute bottom-4 left-4 right-4">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-neutral-600 hover:text-neutral-900"
-          onClick={() => {
-            // Handle logout
-            window.location.href = '/login';
-          }}
-        >
+        <Button variant="ghost" className="w-full justify-start text-neutral-600 hover:text-neutral-900" onClick={handleLogout} disabled={isLoggingOut}>
           <LogOut className="mr-3 h-5 w-5" />
-          Logout
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
         </Button>
       </div>
     </aside>
