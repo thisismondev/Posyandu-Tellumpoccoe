@@ -30,21 +30,20 @@ export default function LoginPage() {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (response.ok && data.success) {
+        // Redirect ke dashboard - session cookie sudah di-set oleh Supabase
+        router.push('/dashboard');
+        router.refresh(); // Refresh to update server components
+      } else {
         setError(data.error || 'Login gagal');
-        return;
       }
-
-      // Redirect ke dashboard setelah login sukses
-      router.push('/dashboard');
-      router.refresh();
-    } catch (err) {
+    } catch (error) {
+      console.error('Login error:', error);
       setError('Terjadi kesalahan. Silakan coba lagi.');
     } finally {
       setIsLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-50 p-4">

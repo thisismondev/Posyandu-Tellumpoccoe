@@ -1,221 +1,72 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
-
-type Child = {
-  id: string;
-  name: string;
-  gender: 'male' | 'female';
-  birthDate: string;
-  age: number;
-  parentName: string;
-  parentId: string;
-  nik: string;
-  birthPlace: string;
-  bloodType: string;
-  height: number;
-  weight: number;
-  lastCheckup: string;
-  healthStatus: 'healthy' | 'sick' | 'monitoring';
-  vaccinationStatus: 'complete' | 'incomplete' | 'pending';
-  notes: string;
-  registrationDate: string;
-};
-
-// Data dummy - ganti dengan fetch dari API
-const dummyChildren: Child[] = [
-  {
-    id: '1',
-    name: 'Aisha Zainudin',
-    gender: 'female',
-    birthDate: '2020-05-15',
-    age: 3,
-    parentName: 'Ahmad Zainudin',
-    parentId: '1',
-    nik: '3201234567890001',
-    birthPlace: 'Jakarta',
-    bloodType: 'A',
-    height: 95,
-    weight: 14,
-    lastCheckup: '2024-01-10',
-    healthStatus: 'healthy',
-    vaccinationStatus: 'complete',
-    notes: 'Perkembangan normal',
-    registrationDate: '2026-01-15',
-  },
-  {
-    id: '2',
-    name: 'Muhammad Zainudin',
-    gender: 'male',
-    birthDate: '2018-08-22',
-    age: 5,
-    parentName: 'Ahmad Zainudin',
-    parentId: '1',
-    nik: '3201234567890002',
-    birthPlace: 'Jakarta',
-    bloodType: 'A',
-    height: 110,
-    weight: 18,
-    lastCheckup: '2024-01-10',
-    healthStatus: 'healthy',
-    vaccinationStatus: 'complete',
-    notes: 'Perkembangan sesuai usia',
-    registrationDate: '2026-02-10',
-  },
-  {
-    id: '3',
-    name: 'Fatimah Nurhaliza',
-    gender: 'female',
-    birthDate: '2019-03-10',
-    age: 4,
-    parentName: 'Siti Nurhaliza',
-    parentId: '2',
-    nik: '3201234567890003',
-    birthPlace: 'Jakarta',
-    bloodType: 'B',
-    height: 102,
-    weight: 16,
-    lastCheckup: '2024-01-08',
-    healthStatus: 'monitoring',
-    vaccinationStatus: 'incomplete',
-    notes: 'Perlu vaksinasi booster',
-    registrationDate: '2025-12-20',
-  },
-  {
-    id: '4',
-    name: 'Zahra Nurhaliza',
-    gender: 'female',
-    birthDate: '2021-11-05',
-    age: 2,
-    parentName: 'Siti Nurhaliza',
-    parentId: '2',
-    nik: '3201234567890004',
-    birthPlace: 'Jakarta',
-    bloodType: 'B',
-    height: 88,
-    weight: 12,
-    lastCheckup: '2024-01-12',
-    healthStatus: 'healthy',
-    vaccinationStatus: 'complete',
-    notes: 'Perkembangan baik',
-    registrationDate: '2026-02-15',
-  },
-  {
-    id: '5',
-    name: 'Ahmad Santoso',
-    gender: 'male',
-    birthDate: '2017-06-20',
-    age: 6,
-    parentName: 'Budi Santoso',
-    parentId: '3',
-    nik: '3201234567890005',
-    birthPlace: 'Jakarta',
-    bloodType: 'O',
-    height: 115,
-    weight: 20,
-    lastCheckup: '2023-12-15',
-    healthStatus: 'healthy',
-    vaccinationStatus: 'complete',
-    notes: 'Sehat dan aktif',
-    registrationDate: '2025-11-10',
-  },
-  {
-    id: '6',
-    name: 'Salsabila Lestari',
-    gender: 'female',
-    birthDate: '2019-09-12',
-    age: 4,
-    parentName: 'Dewi Lestari',
-    parentId: '4',
-    nik: '3201234567890006',
-    birthPlace: 'Jakarta',
-    bloodType: 'AB',
-    height: 100,
-    weight: 15,
-    lastCheckup: '2024-01-05',
-    healthStatus: 'sick',
-    vaccinationStatus: 'complete',
-    notes: 'Sedang flu, dalam perawatan',
-    registrationDate: '2026-01-20',
-  },
-];
+import { Plus, Pencil, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Child } from '@/types/child';
 
 export default function ChildrenPage() {
-  const [children, setChildren] = useState<Child[]>(dummyChildren);
+  const [children, setChildren] = useState<Child[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<keyof Child | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [rowsPerPage, setRowsPerPage] = useState('10');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // Handle sorting
-  const handleSort = (field: keyof Child) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
+  // Helper function untuk capitalize nama
+  const capitalizeName = (name: string | null): string => {
+    if (!name) return '-';
+    return name
+      .toLowerCase()
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
-  // Get sort icon
-  const getSortIcon = (field: keyof Child) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
-    }
-    return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
-  };
+  // Fetch children dari API
+  useEffect(() => {
+    fetchChildren();
+  }, [currentPage, rowsPerPage, searchTerm, sortField, sortDirection]);
 
-  // Filter data
-  const allFilteredChildren = children.filter((child) => {
-    const matchesSearch = child.name.toLowerCase().includes(searchTerm.toLowerCase()) || child.parentName.toLowerCase().includes(searchTerm.toLowerCase()) || child.nik.includes(searchTerm);
-    return matchesSearch;
-  });
+  const fetchChildren = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  // Pagination
-  const totalPages = Math.ceil(allFilteredChildren.length / parseInt(rowsPerPage));
-  const startIndex = (currentPage - 1) * parseInt(rowsPerPage);
-  const endIndex = startIndex + parseInt(rowsPerPage);
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: rowsPerPage,
+        search: searchTerm,
+        sortBy: sortField,
+        sortOrder: sortDirection,
+      });
 
-  const filteredChildren = allFilteredChildren
-    .sort((a, b) => {
-      if (!sortField) return 0;
+      const response = await fetch(`/api/children?${params}`);
+      const result = await response.json();
 
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
-
-      // Handle date sorting
-      if (sortField === 'registrationDate' || sortField === 'birthDate') {
-        aValue = new Date(aValue).getTime();
-        bValue = new Date(bValue).getTime();
-      }
-
-      // Handle string sorting
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-
-      if (sortDirection === 'asc') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      if (result.success) {
+        setChildren(result.data);
+        setTotal(result.total);
+        setTotalPages(result.totalPages);
       } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+        setError(result.error || 'Failed to fetch data');
       }
-    })
-    .slice(startIndex, endIndex);
-
-  // Handle page change
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    } catch (err) {
+      setError('An error occurred while fetching data');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Reset to page 1 when search or rows per page changes
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
@@ -226,10 +77,47 @@ export default function ChildrenPage() {
     setCurrentPage(1);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus data anak ini?')) {
-      setChildren(children.filter((child) => child.id !== id));
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
     }
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
+    }
+    return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
+  };
+
+  const handleDelete = async (id: number) => {
+    if (confirm('Apakah Anda yakin ingin menghapus data anak ini?')) {
+      // TODO: Implement delete functionality
+      console.log('Delete child:', id);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return `${date.getDate()} ${date.toLocaleString('id-ID', { month: 'short' })} ${date.getFullYear()}`;
+  };
+
+  const formatAge = (years: number, months: number) => {
+    if (years === 0 && months === 0) return '-';
+    return `${years} tahun`;
+  };
+
+  // Format gender untuk display
+  const formatGender = (gender: 'male' | 'female') => {
+    return gender === 'male' ? '👦 Laki-laki' : '👧 Perempuan';
   };
 
   return (
@@ -281,54 +169,68 @@ export default function ChildrenPage() {
                   <TableHead className="cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('age')}>
                     Data Diri {getSortIcon('age')}
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('parentName')}>
-                    Orang Tua {getSortIcon('parentName')}
+                  <TableHead className="cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('parent_name')}>
+                    Orang Tua {getSortIcon('parent_name')}
                   </TableHead>
-                  <TableHead className="cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('registrationDate')}>
-                    Tanggal Daftar {getSortIcon('registrationDate')}
+                  <TableHead className="cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('created_at')}>
+                    Tanggal Daftar {getSortIcon('created_at')}
                   </TableHead>
                   <TableHead>Data Kesehatan</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredChildren.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-neutral-500" />
+                      <p className="text-sm text-neutral-500 mt-2">Memuat data...</p>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-red-500">
+                      Error: {error}
+                    </TableCell>
+                  </TableRow>
+                ) : children.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-neutral-500">
                       Tidak ada data ditemukan
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredChildren.map((child) => {
-                    const date = new Date(child.registrationDate);
+                  children.map((child) => {
+                    const date = new Date(child.created_at);
                     const formattedDate = `${date.getDate()} ${date.toLocaleString('id-ID', { month: 'short' })} ${date.getFullYear()}`;
 
                     return (
                       <TableRow key={child.id}>
                         <TableCell className="font-medium">
                           <div>
-                            <div>{child.name}</div>
-                            <div className="text-xs text-neutral-500">{child.gender === 'male' ? '👦 Laki-laki' : '👧 Perempuan'}</div>
+                            <div>{capitalizeName(child.name)}</div>
+                            <div className="text-xs text-neutral-500">{formatGender(child.gender)}</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
                             <div>{child.age} tahun</div>
-                            <div className="text-neutral-500">{child.birthDate}</div>
-                            <div className="text-xs text-neutral-400">NIK: {child.nik}</div>
+                            <div className="text-neutral-500">{child.birth ? formatDate(child.birth) : '-'}</div>
+                            <div className="text-xs text-neutral-400">NIK: {child.nik || '-'}</div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">{child.parentName}</div>
+                          <div className="text-sm">{capitalizeName(child.parent_name)}</div>
+                          <div className="text-sm">{capitalizeName(child.father_name)}</div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">{formattedDate}</div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            <div>TB: {child.height} cm</div>
-                            <div>BB: {child.weight} kg</div>
-                            <div>LK: cm</div>
+                            <div>TB: {child.heightCm ? `${child.heightCm} cm` : '-'}</div>
+                            <div>BB: {child.weightKg ? `${child.weightKg} kg` : '-'}</div>
+                            <div>LK: {child.headCm ? `${child.headCm} cm` : '-'}</div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -355,7 +257,7 @@ export default function ChildrenPage() {
           {/* Pagination */}
           <div className="mt-4 flex items-center justify-between">
             <div className="text-sm text-neutral-600">
-              Menampilkan {startIndex + 1}-{Math.min(endIndex, allFilteredChildren.length)} dari {allFilteredChildren.length} data
+              Menampilkan {children.length > 0 ? (currentPage - 1) * parseInt(rowsPerPage) + 1 : 0}-{Math.min(currentPage * parseInt(rowsPerPage), total)} dari {total} data
             </div>
             {totalPages > 1 && (
               <div className="flex items-center gap-2">

@@ -1,86 +1,59 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { ApiResponse } from '@/lib/api-response';
+import { getEnv } from '@/lib/env';
+import { createCookieHandler } from '@/lib/supabase/cookie-handler';
+import type { LoginRequest, LoginResponse } from '@/types/auth';
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json();
+    const body: LoginRequest = await req.json();
+    const { email, password } = body;
 
-    // Validasi input
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email dan password wajib diisi' }, { status: 400 });
+      return ApiResponse.badRequest('Email dan password wajib diisi');
     }
 
-    // 1. Login dengan Service Role Key
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
+    const cookieStore = await cookies();
+
+    // 🔹 Client untuk login (pakai ANON key)
+    const supabase = createServerClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('NEXT_PUBLIC_SUPABASE_KEY'), {
+      cookies: createCookieHandler(cookieStore),
+    });
+
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json({ error: 'Email atau password salah' }, { status: 401 });
+    if (error || !data.user) {
+      return ApiResponse.unauthorized('Email atau password salah');
     }
 
-    const userId = authData.user.id;
+    // 🔹 Cek role pakai SERVICE ROLE
+    const supabaseAdmin = createAdminClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('SUPABASE_SERVICE_ROLE_KEY'));
 
-    // 2. Cek role di tabel users
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('users')
-      .select('name, role')
-      .eq('id_users', userId)
-      .single();
+    const { data: profile, error: roleError } = await supabaseAdmin.from('users').select('role').eq('id_users', data.user.id).maybeSingle();
 
-    if (profileError || !profile) {
-      // Sign out jika profile tidak ditemukan
-      await supabaseAdmin.auth.signOut();
-      return NextResponse.json({ error: 'Profile tidak ditemukan' }, { status: 404 });
+    if (roleError || !profile || profile.role !== 'Admin') {
+      // ❌ Jika bukan admin → logout
+      await supabase.auth.signOut();
+      return ApiResponse.forbidden('Akses ditolak. Hanya Admin yang bisa login.');
     }
 
-    // 3. Validasi role admin
-    if (profile.role !== 'Admin') {
-      await supabaseAdmin.auth.signOut();
-      return NextResponse.json({ error: 'Akses ditolak. Hanya admin yang dapat login.' }, { status: 403 });
-    }
-
-    // 4. Set session di cookies
-    const cookieStore = await cookies();
-
-    cookieStore.set('sb-access-token', authData.session.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
-
-    cookieStore.set('sb-refresh-token', authData.session.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
-    });
-
-    cookieStore.set('user-id', userId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
-      path: '/',
-    });
-
-    return NextResponse.json({
+    const response: LoginResponse = {
       success: true,
       user: {
-        id: userId,
-        email: authData.user.email,
-        name: profile.name,
+        email: data.user.email,
         role: profile.role,
       },
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
+    return ApiResponse.serverError('Terjadi kesalahan pada server');
   }
 }

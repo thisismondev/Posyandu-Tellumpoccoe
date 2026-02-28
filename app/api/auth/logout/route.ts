@@ -1,18 +1,28 @@
 import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { ApiResponse } from '@/lib/api-response';
+import { getEnv } from '@/lib/env';
+import { createCookieHandler } from '@/lib/supabase/cookie-handler';
+import type { LogoutResponse } from '@/types/auth';
 
 export async function POST() {
   try {
     const cookieStore = await cookies();
 
-    // Hapus semua auth cookies
-    cookieStore.delete('sb-access-token');
-    cookieStore.delete('sb-refresh-token');
-    cookieStore.delete('user-id');
+    const supabase = createServerClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('NEXT_PUBLIC_SUPABASE_KEY'), {
+      cookies: createCookieHandler(cookieStore),
+    });
 
-    return NextResponse.json({ success: true });
+    await supabase.auth.signOut();
+
+    const response: LogoutResponse = {
+      success: true,
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Logout error:', error);
-    return NextResponse.json({ error: 'Terjadi kesalahan saat logout' }, { status: 500 });
+    return ApiResponse.serverError('Terjadi kesalahan saat logout');
   }
 }

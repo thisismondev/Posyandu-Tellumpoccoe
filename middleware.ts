@@ -1,32 +1,56 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { getEnv } from '@/lib/env';
+import { createMiddlewareCookieHandler } from '@/lib/supabase/cookie-handler';
 
 export async function middleware(request: NextRequest) {
-  const token = request.cookies.get('sb-access-token');
-  const { pathname } = request.nextUrl;
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
-  // Route yang tidak perlu login
-  const publicRoutes = ['/login'];
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  const supabase = createServerClient(getEnv('NEXT_PUBLIC_SUPABASE_URL'), getEnv('NEXT_PUBLIC_SUPABASE_KEY'), {
+    cookies: createMiddlewareCookieHandler(request.cookies, response.cookies),
+  });
 
-  // Skip API routes
-  if (pathname.startsWith('/api')) {
-    return NextResponse.next();
+  // Check session dan auto-refresh jika perlu
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  // Jika session expired, coba refresh
+  if (session) {
+    const expiresAt = session.expires_at;
+    const now = Math.floor(Date.now() / 1000);
+
+    // Refresh jika akan expired dalam 10 menit
+    if (expiresAt && expiresAt - now < 600) {
+      await supabase.auth.refreshSession();
+    }
   }
 
-  // Jika di halaman login dan sudah login, redirect ke dashboard
-  if (isPublicRoute && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Get user after potential refresh
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Redirect to login if no user
+  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    const loginUrl = new URL('/login', request.url);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Jika bukan halaman login dan belum login, redirect ke login
-  if (!isPublicRoute && !token) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Redirect to dashboard if user is already logged in and trying to access login page
+  if (user && request.nextUrl.pathname === '/login') {
+    const dashboardUrl = new URL('/dashboard', request.url);
+    return NextResponse.redirect(dashboardUrl);
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/dashboard/:path*', '/login'],
 };

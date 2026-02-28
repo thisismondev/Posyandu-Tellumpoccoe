@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { Footer } from '@/components/dashboard/footer';
+import { SessionMonitor } from '@/components/session-monitor';
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
@@ -12,6 +13,9 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
   return (
     <div className="min-h-screen bg-neutral-50">
+      {/* Session Monitor - auto-check session validity */}
+      <SessionMonitor />
+
       {/* Sidebar */}
       <Sidebar />
 
