@@ -81,14 +81,14 @@ export default async function DashboardPage() {
       </div>
 
       {/* Table */}
-      <Card className="border-neutral-200">
+      {/* <Card className="border-neutral-200">
         <CardHeader>
           <CardTitle className="text-neutral-900">Data Keluarga Terbaru</CardTitle>
         </CardHeader>
         <CardContent>
           <UserTable />
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 }
