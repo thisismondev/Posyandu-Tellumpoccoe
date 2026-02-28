@@ -80,20 +80,15 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Normalize gender dari database (bisa 'L', 'P', 'male', 'female', atau 'laki-laki', 'perempuan')
-      let normalizedGender: 'male' | 'female' = 'male';
-      if (child.gender) {
-        const genderLower = child.gender.toLowerCase();
-        if (genderLower === 'p' || genderLower === 'female' || genderLower === 'perempuan') {
-          normalizedGender = 'female';
-        }
-      }
+      // Kembalikan gender asli dari database ('L' atau 'P')
+      // Tidak perlu normalisasi karena frontend sudah handle format ini
 
       return {
         id: child.id,
+        user_id: child.users_id,
         name: child.name,
         nik: child.nik,
-        gender: normalizedGender,
+        gender: child.gender,
         birth: child.birth,
         age: ageYears,
         ageMonths: ageMonths,
@@ -131,5 +126,77 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Unexpected error in GET /api/children:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      users_id,
+      name,
+      nik,
+      gender,
+      birth,
+      height, // tinggi badan saat lahir/awal (opsional)
+      weight, // berat badan saat lahir/awal (opsional)
+      head, // lingkar kepala (opsional)
+      child_no,
+    } = body;
+
+    // 1. Validasi Input Wajib
+    if (!users_id || !name || !nik || !gender || !birth || !child_no) {
+      return NextResponse.json({ success: false, error: 'Data wajib diisi: users_id, nama, nik, gender, tanggal lahir' }, { status: 400 });
+    }
+
+    // 2. Cek apakah Parent (users_id) valid
+    const { data: parentExists, error: parentError } = await supabaseAdmin.from('users').select('id_users').eq('id_users', users_id).single();
+
+    if (parentError || !parentExists) {
+      return NextResponse.json({ success: false, error: 'ID Orang Tua tidak ditemukan' }, { status: 404 });
+    }
+
+    // 3. Cek NIK Unik (Optional - tapi disarankan)
+    const { data: existingNik } = await supabaseAdmin.from('children').select('id').eq('nik', nik).single();
+
+    if (existingNik) {
+      return NextResponse.json({ success: false, error: 'NIK Anak sudah terdaftar' }, { status: 409 });
+    }
+
+    // 4. Insert ke database
+    // Pastikan nama kolom sesuai dengan database Anda.
+    // Berdasarkan GET code Anda: heightCm, weightKg, headCm.
+    const { data: newChild, error: insertError } = await supabaseAdmin
+      .from('children')
+      .insert({
+        users_id,
+        name,
+        nik,
+        gender, // Pastikan formatnya sesuai (misal: 'L'/'P' atau 'Male'/'Female')
+        birth,
+        heightCm: height || 0,
+        weightKg: weight || 0,
+        headCm: head || 0,
+        child_no: child_no || 1, // Anak ke-berapa
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error creating child:', insertError);
+      return NextResponse.json({ success: false, error: 'Gagal menyimpan data anak: ' + insertError.message }, { status: 500 });
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Data anak berhasil ditambahkan',
+        data: newChild,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error('Unexpected error in POST /api/children:', error);
+    return NextResponse.json({ success: false, error: 'Terjadi kesalahan server' }, { status: 500 });
   }
 }

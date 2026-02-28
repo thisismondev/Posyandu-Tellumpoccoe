@@ -109,3 +109,49 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
+
+/**
+ * POST - Tambah Data Pengukuran Baru
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { children_id, measured_at, heightCm, weightKg, headCm, armCm } = body;
+
+    // 1. Validasi Input Wajib
+    if (!children_id || !measured_at) {
+      return NextResponse.json({ success: false, error: 'Data wajib diisi: Nama Anak dan Tanggal Pengukuran' }, { status: 400 });
+    }
+
+    // 2. Insert ke database
+    const { data: newMeasure, error: insertError } = await supabaseAdmin
+      .from('measurements')
+      .insert({
+        children_id,
+        measured_at, // Format: YYYY-MM-DD
+        heightCm: heightCm || 0,
+        weightKg: weightKg || 0,
+        headCm: headCm || 0,
+        armCm: armCm || 0,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error creating measurement:', insertError);
+      return NextResponse.json({ success: false, error: 'Gagal menyimpan data: ' + insertError.message }, { status: 500 });
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Data pengukuran berhasil ditambahkan',
+        data: newMeasure,
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    console.error('Unexpected error in POST /api/measure:', error);
+    return NextResponse.json({ success: false, error: 'Terjadi kesalahan server' }, { status: 500 });
+  }
+}

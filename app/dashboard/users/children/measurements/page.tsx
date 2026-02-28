@@ -4,10 +4,20 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Plus, Pencil, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Measurement } from '@/types/measure';
+
+// Type untuk dropdown anak
+type ChildOption = {
+  id: string; // atau number tergantung DB
+  name: string;
+  nik: string;
+};
 
 export default function MeasurementsPage() {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
@@ -20,6 +30,33 @@ export default function MeasurementsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>('measured_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // State untuk Add Dialog (AlertDialog)
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAddLoading, setIsAddLoading] = useState(false);
+  const [addForm, setAddForm] = useState({
+    children_id: '',
+    measured_at: new Date().toISOString().split('T')[0], // Default hari ini
+    heightCm: '',
+    weightKg: '',
+    headCm: '',
+    armCm: '',
+  });
+
+  // State untuk Edit Sheet
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  const [isEditLoading, setIsEditLoading] = useState(false);
+  const [selectedMeasure, setSelectedMeasure] = useState<Measurement | null>(null);
+  const [editForm, setEditForm] = useState({
+    measured_at: '',
+    heightCm: '',
+    weightKg: '',
+    headCm: '',
+    armCm: '',
+  });
+
+  // State untuk dropdown anak
+  const [childrenList, setChildrenList] = useState<ChildOption[]>([]);
 
   // Helper function untuk capitalize nama
   const capitalizeName = (name: string | null): string => {
@@ -35,6 +72,23 @@ export default function MeasurementsPage() {
   useEffect(() => {
     fetchMeasurements();
   }, [currentPage, rowsPerPage, searchTerm, sortField, sortDirection]);
+
+  // Fetch children list untuk dropdown
+  useEffect(() => {
+    fetchChildrenList();
+  }, []);
+
+  const fetchChildrenList = async () => {
+    try {
+      const response = await fetch('/api/children/list');
+      const result = await response.json();
+      if (result.success) {
+        setChildrenList(result.data);
+      }
+    } catch (err) {
+      console.error('Error fetching children list:', err);
+    }
+  };
 
   const fetchMeasurements = async () => {
     try {
@@ -97,10 +151,126 @@ export default function MeasurementsPage() {
     return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
   };
 
+  // Handler untuk Add Measurement
+  const handleAddMeasure = async () => {
+    if (!addForm.children_id || !addForm.measured_at) {
+      alert('Nama Anak dan Tanggal Pengukuran wajib diisi');
+      return;
+    }
+
+    try {
+      setIsAddLoading(true);
+
+      const response = await fetch('/api/measure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          children_id: addForm.children_id,
+          measured_at: addForm.measured_at,
+          heightCm: addForm.heightCm ? parseFloat(addForm.heightCm) : 0,
+          weightKg: addForm.weightKg ? parseFloat(addForm.weightKg) : 0,
+          headCm: addForm.headCm ? parseFloat(addForm.headCm) : 0,
+          armCm: addForm.armCm ? parseFloat(addForm.armCm) : 0,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Data pengukuran berhasil ditambahkan');
+        setIsAddDialogOpen(false);
+        setAddForm({
+          children_id: '',
+          measured_at: new Date().toISOString().split('T')[0],
+          heightCm: '',
+          weightKg: '',
+          headCm: '',
+          armCm: '',
+        });
+        fetchMeasurements();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error adding measurement:', error);
+      alert('Terjadi kesalahan saat menambahkan data');
+    } finally {
+      setIsAddLoading(false);
+    }
+  };
+
+  // Handler untuk Edit (buka Sheet)
+  const handleEdit = async (measurement: Measurement) => {
+    setSelectedMeasure(measurement);
+    setEditForm({
+      measured_at: measurement.measured_at,
+      heightCm: measurement.heightCm?.toString() || '',
+      weightKg: measurement.weightKg?.toString() || '',
+      headCm: measurement.headCm?.toString() || '',
+      armCm: measurement.armCm?.toString() || '',
+    });
+    setIsEditSheetOpen(true);
+  };
+
+  // Handler untuk Update Measurement
+  const handleUpdateMeasure = async () => {
+    if (!selectedMeasure) return;
+
+    try {
+      setIsEditLoading(true);
+
+      const response = await fetch(`/api/measure/${selectedMeasure.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          measured_at: editForm.measured_at,
+          heightCm: editForm.heightCm ? parseFloat(editForm.heightCm) : 0,
+          weightKg: editForm.weightKg ? parseFloat(editForm.weightKg) : 0,
+          headCm: editForm.headCm ? parseFloat(editForm.headCm) : 0,
+          armCm: editForm.armCm ? parseFloat(editForm.armCm) : 0,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Data pengukuran berhasil diperbarui');
+        setIsEditSheetOpen(false);
+        setSelectedMeasure(null);
+        fetchMeasurements();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error updating measurement:', error);
+      alert('Terjadi kesalahan saat memperbarui data');
+    } finally {
+      setIsEditLoading(false);
+    }
+  };
+
+  // Handler untuk Delete
   const handleDelete = async (id: number) => {
-    if (confirm('Apakah Anda yakin ingin menghapus data pengukuran ini?')) {
-      // TODO: Implement delete functionality
-      console.log('Delete measurement:', id);
+    if (!confirm('Apakah Anda yakin ingin menghapus data pengukuran ini?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/measure/${id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert('Data pengukuran berhasil dihapus');
+        fetchMeasurements();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error deleting measurement:', error);
+      alert('Terjadi kesalahan saat menghapus data');
     }
   };
 
@@ -142,7 +312,7 @@ export default function MeasurementsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
               <Plus className="h-4 w-4" />
               Tambah Pengukuran
             </Button>
@@ -222,7 +392,7 @@ export default function MeasurementsPage() {
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Lihat Detail">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit" onClick={() => handleEdit(measurement)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600 hover:text-red-700" onClick={() => handleDelete(measurement.id)} title="Hapus">
@@ -273,6 +443,141 @@ export default function MeasurementsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* AlertDialog untuk Tambah Pengukuran */}
+      <AlertDialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tambah Data Pengukuran</AlertDialogTitle>
+            <AlertDialogDescription>Masukkan data pengukuran anak baru</AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="children_id">Nama Anak *</Label>
+              <Select value={addForm.children_id} onValueChange={(value) => setAddForm({ ...addForm, children_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih anak" />
+                </SelectTrigger>
+                <SelectContent>
+                  {childrenList.map((child) => (
+                    <SelectItem key={child.id} value={child.id}>
+                      {capitalizeName(child.name)} - {child.nik}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="measured_at">Tanggal Pengukuran *</Label>
+              <Input id="measured_at" type="date" value={addForm.measured_at} onChange={(e) => setAddForm({ ...addForm, measured_at: e.target.value })} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="heightCm">Tinggi Badan (cm)</Label>
+                <Input id="heightCm" type="number" step="0.1" placeholder="0.0" value={addForm.heightCm} onChange={(e) => setAddForm({ ...addForm, heightCm: e.target.value })} />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="weightKg">Berat Badan (kg)</Label>
+                <Input id="weightKg" type="number" step="0.1" placeholder="0.0" value={addForm.weightKg} onChange={(e) => setAddForm({ ...addForm, weightKg: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="headCm">Lingkar Kepala (cm)</Label>
+                <Input id="headCm" type="number" step="0.1" placeholder="0.0" value={addForm.headCm} onChange={(e) => setAddForm({ ...addForm, headCm: e.target.value })} />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="armCm">LILA (cm)</Label>
+                <Input id="armCm" type="number" step="0.1" placeholder="0.0" value={addForm.armCm} onChange={(e) => setAddForm({ ...addForm, armCm: e.target.value })} />
+              </div>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isAddLoading}>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAddMeasure} disabled={isAddLoading}>
+              {isAddLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Sheet untuk Edit Pengukuran */}
+      <Sheet open={isEditSheetOpen} onOpenChange={setIsEditSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Edit Data Pengukuran</SheetTitle>
+            <SheetDescription>Perbarui data pengukuran anak</SheetDescription>
+          </SheetHeader>
+
+          {selectedMeasure && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Nama Anak</Label>
+                <Input value={capitalizeName(selectedMeasure.child_name)} disabled className="bg-neutral-50" />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="edit_measured_at">Tanggal Pengukuran *</Label>
+                <Input id="edit_measured_at" type="date" value={editForm.measured_at} onChange={(e) => setEditForm({ ...editForm, measured_at: e.target.value })} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit_heightCm">Tinggi Badan (cm)</Label>
+                  <Input id="edit_heightCm" type="number" step="0.1" placeholder="0.0" value={editForm.heightCm} onChange={(e) => setEditForm({ ...editForm, heightCm: e.target.value })} />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="edit_weightKg">Berat Badan (kg)</Label>
+                  <Input id="edit_weightKg" type="number" step="0.1" placeholder="0.0" value={editForm.weightKg} onChange={(e) => setEditForm({ ...editForm, weightKg: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit_headCm">Lingkar Kepala (cm)</Label>
+                  <Input id="edit_headCm" type="number" step="0.1" placeholder="0.0" value={editForm.headCm} onChange={(e) => setEditForm({ ...editForm, headCm: e.target.value })} />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="edit_armCm">LILA (cm)</Label>
+                  <Input id="edit_armCm" type="number" step="0.1" placeholder="0.0" value={editForm.armCm} onChange={(e) => setEditForm({ ...editForm, armCm: e.target.value })} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <SheetFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsEditSheetOpen(false)} disabled={isEditLoading}>
+              Batal
+            </Button>
+            <Button onClick={handleUpdateMeasure} disabled={isEditLoading}>
+              {isEditLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan Perubahan'
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

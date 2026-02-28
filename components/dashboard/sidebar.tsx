@@ -24,12 +24,12 @@ const menuItems = [
       {
         title: 'Data Anak',
         href: '/dashboard/users/children',
-        icon: UserCheck
+        icon: UserCheck,
       },
       {
         title: 'Riwayat Pengukuran',
         href: '/dashboard/users/children/measurements',
-        icon: Activity
+        icon: Activity,
       },
     ],
   },
@@ -37,11 +37,13 @@ const menuItems = [
     title: 'Laporan',
     href: '/dashboard/reports',
     icon: FileText,
+    disabled: true,
   },
   {
     title: 'Pengaturan',
     href: '/dashboard/settings',
     icon: Settings,
+    disabled: true,
   },
 ];
 
@@ -54,8 +56,8 @@ export function Sidebar() {
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await fetch('/api/auth/logout', { 
-        method: 'POST' 
+      await fetch('/api/auth/logout', {
+        method: 'POST',
       });
       router.push('/login');
       router.refresh();
@@ -78,6 +80,8 @@ export function Sidebar() {
       <nav className="space-y-1 p-4">
         {menuItems.map((item) => {
           const Icon = item.icon;
+
+          const isDisabled = item.disabled;
 
           // Menu dengan submenu
           if (item.submenu) {
@@ -127,6 +131,20 @@ export function Sidebar() {
 
           // Menu biasa tanpa submenu
           const isActive = pathname === item.href;
+          // JIKA DISABLED: Render sebagai div/button mati, bukan Link
+          if (isDisabled) {
+            return (
+              <div key={item.href} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-neutral-400 cursor-not-allowed select-none" onClick={(e) => e.preventDefault()} title="Fitur dalam pengembangan">
+                <Icon className="h-5 w-5" />
+                <div className="flex justify-between w-full items-center">
+                  {item.title}
+                  <span className="text-[10px] border border-neutral-300 px-1.5 py-0.5 rounded-md text-neutral-500">Soon</span>
+                </div>
+              </div>
+            );
+          }
+
+          // JIKA AKTIF: Render Link normal
           return (
             <Link
               key={item.href}
