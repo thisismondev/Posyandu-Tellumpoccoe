@@ -332,7 +332,7 @@ export default function UsersPage() {
                     <TableHead className="cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('created_at')}>
                       Tanggal Daftar {getSortIcon('created_at')}
                     </TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
+                    <TableHead className="text-center">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -381,7 +381,7 @@ export default function UsersPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm max-w-[200px]">{capitalizeName(user.address) || '-'}</div>
+                            <div className="text-sm max-w-[200px] line-clamp-2 truncate">{capitalizeName(user.address) || '-'}</div>
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant="secondary" className="font-semibold">
@@ -393,9 +393,9 @@ export default function UsersPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              {/* <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                 <Eye className="h-4 w-4" />
-                              </Button>
+                              </Button> */}
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(user.id_users)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>

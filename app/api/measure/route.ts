@@ -10,6 +10,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const sortBy = searchParams.get('sortBy') || 'measured_at';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const month = searchParams.get('month') || '';
+    const year = searchParams.get('year') || '';
 
     const offset = (page - 1) * limit;
 
@@ -34,6 +36,21 @@ export async function GET(request: NextRequest) {
     // Search filter (untuk nama anak)
     if (search) {
       query = query.or(`children.name.ilike.%${search}%`);
+    }
+
+    // Filter by month and year
+    if (month && year) {
+      // Filter untuk bulan dan tahun spesifik
+      const startDate = `${year}-${month.padStart(2, '0')}-01`;
+      // Hitung hari terakhir bulan
+      const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+      const endDate = `${year}-${month.padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+      query = query.gte('measured_at', startDate).lte('measured_at', endDate);
+    } else if (year) {
+      // Filter hanya tahun
+      const startDate = `${year}-01-01`;
+      const endDate = `${year}-12-31`;
+      query = query.gte('measured_at', startDate).lte('measured_at', endDate);
     }
 
     // Sorting

@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
-import { Plus, Pencil, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import { Measurement } from '@/types/measure';
 
 // Type untuk dropdown anak
@@ -30,6 +30,11 @@ export default function MeasurementsPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>('measured_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // State untuk filter bulan dan tahun
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [filterKey, setFilterKey] = useState(0); // Key untuk force re-render Select
 
   // State untuk Add Dialog (AlertDialog)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -58,6 +63,26 @@ export default function MeasurementsPage() {
   // State untuk dropdown anak
   const [childrenList, setChildrenList] = useState<ChildOption[]>([]);
 
+  // Data bulan
+  const months = [
+    { value: '1', label: 'Januari' },
+    { value: '2', label: 'Februari' },
+    { value: '3', label: 'Maret' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'Mei' },
+    { value: '6', label: 'Juni' },
+    { value: '7', label: 'Juli' },
+    { value: '8', label: 'Agustus' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' },
+  ];
+
+  // Generate tahun (5 tahun terakhir sampai tahun ini)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 6 }, (_, i) => (currentYear - i).toString());
+
   // Helper function untuk capitalize nama
   const capitalizeName = (name: string | null): string => {
     if (!name) return '-';
@@ -71,7 +96,7 @@ export default function MeasurementsPage() {
   // Fetch measurements dari API
   useEffect(() => {
     fetchMeasurements();
-  }, [currentPage, rowsPerPage, searchTerm, sortField, sortDirection]);
+  }, [currentPage, rowsPerPage, searchTerm, sortField, sortDirection, selectedMonth, selectedYear]);
 
   // Fetch children list untuk dropdown
   useEffect(() => {
@@ -101,6 +126,8 @@ export default function MeasurementsPage() {
         search: searchTerm,
         sortBy: sortField,
         sortOrder: sortDirection,
+        ...(selectedMonth && { month: selectedMonth }),
+        ...(selectedYear && { year: selectedYear }),
       });
 
       const response = await fetch(`/api/measure?${params}`);
@@ -149,6 +176,15 @@ export default function MeasurementsPage() {
       return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
     }
     return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4 ml-1 inline" /> : <ArrowDown className="h-4 w-4 ml-1 inline" />;
+  };
+
+  // Handler untuk reset filter
+  const handleResetFilters = () => {
+    setSelectedMonth('');
+    setSelectedYear('');
+    setSearchTerm('');
+    setCurrentPage(1);
+    setFilterKey((prev) => prev + 1); // Increment key untuk force re-render Select
   };
 
   // Handler untuk Add Measurement
@@ -298,24 +334,88 @@ export default function MeasurementsPage() {
         </CardHeader>
         <CardContent>
           {/* Filters */}
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-4">
-              <Input placeholder="Cari nama anak..." value={searchTerm} onChange={(e) => handleSearchChange(e.target.value)} className="max-w-sm" />
-              <Select value={rowsPerPage} onValueChange={handleRowsPerPageChange}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Tampilkan" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-4 mb-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4 flex-1">
+                <Input placeholder="Cari nama anak..." value={searchTerm} onChange={(e) => handleSearchChange(e.target.value)} className="max-w-sm" />
+
+                <Select
+                  key={`month-${filterKey}`}
+                  value={selectedMonth || undefined}
+                  onValueChange={(value) => {
+                    setSelectedMonth(value);
+                    // Jika memilih bulan tapi belum ada tahun, set tahun ke tahun sekarang
+                    if (value && !selectedYear) {
+                      setSelectedYear(currentYear.toString());
+                    }
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Semua Bulan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  key={`year-${filterKey}`}
+                  value={selectedYear || undefined}
+                  onValueChange={(value) => {
+                    setSelectedYear(value);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Semua Tahun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {(selectedMonth || selectedYear || searchTerm) && (
+                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="gap-2">
+                    <X className="h-4 w-4" />
+                    Reset Filter
+                  </Button>
+                )}
+
+                <Select value={rowsPerPage} onValueChange={handleRowsPerPageChange}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Tampilkan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Tambah Pengukuran
+              </Button>
             </div>
-            <Button className="gap-2" onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Tambah Pengukuran
-            </Button>
+
+            {/* Active Filters Display */}
+            {(selectedMonth || selectedYear) && (
+              <div className="flex items-center gap-2 text-sm text-neutral-600">
+                <span>Filter aktif:</span>
+                {selectedMonth && <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md">{months.find((m) => m.value === selectedMonth)?.label}</span>}
+                {selectedYear && <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-md">{selectedYear}</span>}
+              </div>
+            )}
           </div>
 
           {/* Table */}
@@ -340,7 +440,7 @@ export default function MeasurementsPage() {
                   <TableHead className="cursor-pointer hover:bg-neutral-50 w-[100px] text-center" onClick={() => handleSort('armCm')}>
                     LILA (cm) {getSortIcon('armCm')}
                   </TableHead>
-                  <TableHead className="text-right w-[120px]">Aksi</TableHead>
+                  <TableHead className="text-center w-[120px] ">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -369,11 +469,11 @@ export default function MeasurementsPage() {
                       <TableCell className="w-[150px]">
                         <div className="text-sm font-medium">{formatDate(measurement.measured_at)}</div>
                       </TableCell>
-                      <TableCell className="w-[200px]">
+                      <TableCell className="max-w-[250px] line-clamp-2 truncate">
                         <div className="text-sm font-medium">{capitalizeName(measurement.child_name)}</div>
                       </TableCell>
                       <TableCell className="w-[120px] text-center">
-                        <div className="text-sm font-semibold">{measurement.age_months} bulan</div>
+                        <div className="text-sm font-semibold">{measurement.age_months}</div>
                       </TableCell>
                       <TableCell className="w-[100px] text-center">
                         <div className="text-sm">{measurement.heightCm ? measurement.heightCm.toFixed(1) : '-'}</div>
@@ -389,9 +489,9 @@ export default function MeasurementsPage() {
                       </TableCell>
                       <TableCell className="text-right w-[120px]">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Lihat Detail">
+                          {/* <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Lihat Detail">
                             <Eye className="h-4 w-4" />
-                          </Button>
+                          </Button> */}
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Edit" onClick={() => handleEdit(measurement)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
