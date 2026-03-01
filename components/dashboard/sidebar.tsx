@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 const menuItems = [
   {
     title: 'Dashboard',
-    href: '/dashboard',
+    href: '/',
     icon: LayoutDashboard,
   },
   {
     title: 'Manajemen Keluarga',
-    href: '/dashboard/users',
+    href: '/users',
     icon: Users,
   },
   {
@@ -23,12 +23,12 @@ const menuItems = [
     submenu: [
       {
         title: 'Data Anak',
-        href: '/dashboard/users/children',
+        href: '/children',
         icon: UserCheck,
       },
       {
         title: 'Riwayat Pengukuran',
-        href: '/dashboard/users/children/measurements',
+        href: '/children/measurements',
         icon: Activity,
       },
     ],

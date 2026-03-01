@@ -32,7 +32,7 @@ export default function LoginPage() {
 
       if (response.ok && data.success) {
         // Redirect ke dashboard - session cookie sudah di-set oleh Supabase
-        router.push('/dashboard');
+        router.push('/');
         router.refresh(); // Refresh to update server components
       } else {
         setError(data.error || 'Login gagal');

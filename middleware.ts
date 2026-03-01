@@ -36,15 +36,17 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const { pathname } = request.nextUrl;
+
   // Redirect to login if no user
-  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+  if (!user && pathname === '/') {
     const loginUrl = new URL('/login', request.url);
     return NextResponse.redirect(loginUrl);
   }
 
   // Redirect to dashboard if user is already logged in and trying to access login page
-  if (user && request.nextUrl.pathname === '/login') {
-    const dashboardUrl = new URL('/dashboard', request.url);
+  if (user && pathname === '/login') {
+    const dashboardUrl = new URL('/', request.url);
     return NextResponse.redirect(dashboardUrl);
   }
 
@@ -52,5 +54,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login'],
+  matcher: ['/', '/users/:path*', '/login', '/children/:path*'],
 };
