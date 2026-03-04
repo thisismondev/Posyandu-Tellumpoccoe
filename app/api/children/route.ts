@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 1. Validasi Input Wajib
-    if (!users_id || !name || !nik || !gender || !birth || !child_no) {
+    if (!users_id || !name || !gender || !birth || !child_no) {
       return NextResponse.json({ success: false, error: 'Data wajib diisi: users_id, nama, nik, gender, tanggal lahir' }, { status: 400 });
     }
 
