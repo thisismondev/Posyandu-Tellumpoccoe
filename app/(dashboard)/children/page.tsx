@@ -35,6 +35,7 @@ export default function ChildrenPage() {
   // --- NEW STATE FOR CRUD ---
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
@@ -67,6 +68,12 @@ export default function ChildrenPage() {
     weight: '',
     head: '',
     child_no: '',
+    status: '',
+    death_date: '',
+    death_location: '',
+    death_cause: '',
+    move_date: '',
+    move_destination: '',
   });
 
   // Helper capitalization
@@ -188,6 +195,11 @@ export default function ChildrenPage() {
     }
   };
 
+  const handleViewDetail = (child: Child) => {
+    setSelectedChild(child);
+    setIsDetailDialogOpen(true);
+  };
+
   const handleEdit = (child: any) => {
     // Gunakan any atau type Child yang lengkap
 
@@ -202,6 +214,12 @@ export default function ChildrenPage() {
       weight: child.weightKg?.toString() || '',
       head: child.headCm?.toString() || '',
       child_no: child.child_no?.toString() || '1',
+      status: child.status,
+      death_date: child.death_date ? new Date(child.death_date).toISOString().split('T')[0] : '',
+      death_location: child.death_location || '',
+      death_cause: child.death_cause || '',
+      move_date: child.move_date ? new Date(child.move_date).toISOString().split('T')[0] : '',
+      move_destination: child.move_destination || '',
     });
     setIsEditSheetOpen(true);
   };
@@ -212,13 +230,26 @@ export default function ChildrenPage() {
     setIsSaving(true);
 
     try {
-      const payload = {
+      const payload: any = {
         ...editForm,
         height: parseFloat(editForm.height) || 0,
         weight: parseFloat(editForm.weight) || 0,
         head: parseFloat(editForm.head) || 0,
         child_no: parseInt(editForm.child_no) || 1,
       };
+
+      // Only include death fields if status is Meninggal
+      if (editForm.status !== 'Meninggal') {
+        delete payload.death_date;
+        delete payload.death_location;
+        delete payload.death_cause;
+      }
+
+      // Only include move fields if status is Pindah
+      if (editForm.status !== 'Pindah') {
+        delete payload.move_date;
+        delete payload.move_destination;
+      }
 
       const response = await fetch(`/api/children/${selectedChild.id}`, {
         method: 'PUT',
@@ -356,35 +387,38 @@ export default function ChildrenPage() {
                       Data Diri {getSortIcon('birth')}
                     </TableHead>
                     <TableHead>Orang Tua</TableHead>
-                    <TableHead>Data Kesehatan (Awal)</TableHead>
+                    <TableHead>Tanggal Daftar</TableHead>
+                    <TableHead>Data Lahir</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto text-neutral-500" />
                         <p className="text-sm text-neutral-500 mt-2">Memuat data...</p>
                       </TableCell>
                     </TableRow>
                   ) : error ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-red-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-red-500">
                         Error: {error}
                       </TableCell>
                     </TableRow>
                   ) : children.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-neutral-500">
+                      <TableCell colSpan={7} className="text-center py-8 text-neutral-500">
                         Tidak ada data ditemukan
                       </TableCell>
                     </TableRow>
                   ) : (
-                    children.map(
-                      (
-                        child: any, // Adjust type logic
-                      ) => (
+                    children.map((child) => {
+                      const date = new Date(child.created_at);
+                      const formattedDate = `${date.getDate()} ${date.toLocaleString('id-ID', { month: 'short' })} ${date.getFullYear()}`;
+
+                      return (
                         <TableRow key={child.id}>
                           <TableCell className="font-medium">
                             <div>
@@ -404,14 +438,23 @@ export default function ChildrenPage() {
                             <div className="text-xs text-neutral-500">{child.father_name ? capitalizeName(child.father_name) : '-'}</div>
                           </TableCell>
                           <TableCell>
+                            <div className="text-sm text-neutral-600">{formattedDate}</div>
+                          </TableCell>
+                          <TableCell>
                             <div className="text-sm text-neutral-600">
                               <div>TB: {child.heightCm || '-'} cm</div>
                               <div>BB: {child.weightKg || '-'} kg</div>
                               <div>LK: {child.headCm || '-'} cm</div>
                             </div>
                           </TableCell>
+                          <TableCell>
+                            <div className="text-sm text-neutral-600">{child.status}</div>
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Lihat Detail" onClick={() => handleViewDetail(child)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(child)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
@@ -421,8 +464,8 @@ export default function ChildrenPage() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ),
-                    )
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -446,6 +489,149 @@ export default function ChildrenPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* --- DIALOG DETAIL ANAK --- */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detail Data Anak</DialogTitle>
+            <DialogDescription>Informasi lengkap data anak</DialogDescription>
+          </DialogHeader>
+
+          {selectedChild && (
+            <div className="space-y-6 py-4">
+              {/* Informasi Dasar */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Informasi Dasar</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-neutral-500">Nama Lengkap</Label>
+                    <p className="font-medium">{capitalizeName(selectedChild.name)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">NIK</Label>
+                    <p className="font-medium">{selectedChild.nik || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">Jenis Kelamin</Label>
+                    <p className="font-medium">{formatGender(selectedChild.gender)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">Tanggal Lahir</Label>
+                    <p className="font-medium">{selectedChild.birth ? formatDate(selectedChild.birth) : '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">Anak Ke-</Label>
+                    <p className="font-medium">{selectedChild.child_no || '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">Status</Label>
+                    <p className="font-medium">{selectedChild.status || 'Aktif'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informasi Orang Tua */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Informasi Orang Tua</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-neutral-500">Nama Kepala Keluarga</Label>
+                    <p className="font-medium">{selectedChild.parent_name ? capitalizeName(selectedChild.parent_name) : '-'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">Nama Ayah</Label>
+                    <p className="font-medium">{selectedChild.father_name ? capitalizeName(selectedChild.father_name) : '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Fisik Lahir */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Data Fisik Lahir/Awal</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-neutral-500">Tinggi Badan (TB)</Label>
+                    <p className="font-medium">{selectedChild.heightCm || '-'} cm</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">Berat Badan (BB)</Label>
+                    <p className="font-medium">{selectedChild.weightKg || '-'} kg</p>
+                  </div>
+                  <div>
+                    <Label className="text-neutral-500">Lingkar Kepala (LK)</Label>
+                    <p className="font-medium">{selectedChild.headCm || '-'} cm</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Informasi Meninggal - Conditional */}
+              {selectedChild.status === 'Meninggal' && (
+                <div className="space-y-4 bg-red-50 p-4 rounded-lg border border-red-200">
+                  <h3 className="font-semibold text-lg text-red-800 border-b border-red-200 pb-2">Informasi Meninggal</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-red-700">Tanggal Meninggal</Label>
+                      <p className="font-medium text-red-900">{selectedChild.death_date ? formatDate(selectedChild.death_date) : '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-red-700">Lokasi</Label>
+                      <p className="font-medium text-red-900">{selectedChild.death_location || '-'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-red-700">Penyebab</Label>
+                      <p className="font-medium text-red-900">{selectedChild.death_cause || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Informasi Pindah - Conditional */}
+              {selectedChild.status === 'Pindah' && (
+                <div className="space-y-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h3 className="font-semibold text-lg text-blue-800 border-b border-blue-200 pb-2">Informasi Pindah</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-blue-700">Tanggal Pindah</Label>
+                      <p className="font-medium text-blue-900">{selectedChild.move_date ? formatDate(selectedChild.move_date) : '-'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-blue-700">Tujuan</Label>
+                      <p className="font-medium text-blue-900">{selectedChild.move_destination || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Informasi Sistem */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Informasi Sistem</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div>
+                    <Label className="text-neutral-500">Tanggal Pendaftaran</Label>
+                    <p className="font-medium">{formatDate(selectedChild.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
+              Tutup
+            </Button>
+            <Button
+              onClick={() => {
+                setIsDetailDialogOpen(false);
+                if (selectedChild) handleEdit(selectedChild);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Data
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* --- DIALOG TAMBAH ANAK --- */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -620,6 +806,63 @@ export default function ChildrenPage() {
               <Label>Anak Ke-</Label>
               <Input type="number" value={editForm.child_no} onChange={(e) => setEditForm({ ...editForm, child_no: e.target.value })} />
             </div>
+
+            <div className="space-y-2">
+              <Label>Status User</Label>
+              <Select value={editForm.status} onValueChange={(val) => setEditForm({ ...editForm, status: val })} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Status" />
+                </SelectTrigger>
+                <SelectContent position="popper" className="z-[200]">
+                  <SelectItem value="Aktif">Aktif</SelectItem>
+                  <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                  <SelectItem value="Meninggal">Meninggal</SelectItem>
+                  <SelectItem value="Pindah">Pindah</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Conditional fields for Meninggal status */}
+            {editForm.status === 'Meninggal' && (
+              <div className="space-y-4 border-t pt-4 mt-4">
+                <div className="space-y-2">
+                  <Label>
+                    Tanggal Meninggal <span className="text-red-500">*</span>
+                  </Label>
+                  <Input type="date" value={editForm.death_date} onChange={(e) => setEditForm({ ...editForm, death_date: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    Lokasi Meninggal <span className="text-red-500">*</span>
+                  </Label>
+                  <Input value={editForm.death_location} onChange={(e) => setEditForm({ ...editForm, death_location: e.target.value })} placeholder="Contoh: RS Umum Jakarta" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    Penyebab Meninggal <span className="text-red-500">*</span>
+                  </Label>
+                  <Input value={editForm.death_cause} onChange={(e) => setEditForm({ ...editForm, death_cause: e.target.value })} placeholder="Contoh: Sakit paru-paru" required />
+                </div>
+              </div>
+            )}
+
+            {/* Conditional fields for Pindah status */}
+            {editForm.status === 'Pindah' && (
+              <div className="space-y-4 border-t pt-4 mt-4">
+                <div className="space-y-2">
+                  <Label>
+                    Tanggal Pindah <span className="text-red-500">*</span>
+                  </Label>
+                  <Input type="date" value={editForm.move_date} onChange={(e) => setEditForm({ ...editForm, move_date: e.target.value })} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    Pindah Kemana <span className="text-red-500">*</span>
+                  </Label>
+                  <Input value={editForm.move_destination} onChange={(e) => setEditForm({ ...editForm, move_destination: e.target.value })} placeholder="Contoh: Jakarta Selatan" required />
+                </div>
+              </div>
+            )}
 
             <SheetFooter className="mt-8 gap-2">
               <Button type="submit" className="flex-1" disabled={isSaving}>

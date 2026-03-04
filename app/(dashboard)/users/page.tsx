@@ -54,6 +54,7 @@ export default function UsersPage() {
     email: '',
     phone: '',
     address: '',
+    status_user: '',
   });
 
   // Helper function untuk capitalize nama
@@ -226,6 +227,7 @@ export default function UsersPage() {
         email: data.data.email || '',
         phone: data.data.phone || '',
         address: data.data.address || '',
+        status_user: data.data.status_user || '',
       });
     } catch (err) {
       console.error('Error fetching user detail:', err);
@@ -332,6 +334,7 @@ export default function UsersPage() {
                     <TableHead className="cursor-pointer hover:bg-neutral-50" onClick={() => handleSort('created_at')}>
                       Tanggal Daftar {getSortIcon('created_at')}
                     </TableHead>
+                    <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-center">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -390,6 +393,11 @@ export default function UsersPage() {
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">{formattedDate}</div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="secondary" className="font-semibold">
+                              {user.status_user}
+                            </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -584,6 +592,19 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <Label>Alamat</Label>
                 <Input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status User</Label>
+                <Select value={editForm.status_user} onValueChange={(val) => setEditForm({ ...editForm, status_user: val })} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Status" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="z-[200]">
+                    <SelectItem value="Aktif">Aktif</SelectItem>
+                    <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <SheetFooter className="mt-8 pb-6 gap-2">

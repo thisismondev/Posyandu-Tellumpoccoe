@@ -35,7 +35,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, father_name, nik, kk, phone, address, email, password } = body;
+    const { name, father_name, nik, kk, phone, address, email, password, status_user } = body;
 
     // Validasi
     if (!name) {
@@ -96,6 +96,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       phone: phone || null,
       address: address || null,
       ...(email && { email }),
+      ...(status_user && { status_user }),
     };
 
     // Set is_example_email ke false jika email diganti

@@ -10,6 +10,13 @@ export type Child = {
   heightCm: number | null; // tinggi badan (TB)
   weightKg: number | null; // berat badan (BB)
   headCm: number | null; // lingkar kepala (LK)
+  child_no: number | null; // anak ke berapa
+  status: string | null; // status anak
+  death_date: string | null; // tanggal meninggal
+  death_location: string | null; // lokasi meninggal
+  death_cause: string | null; // penyebab meninggal
+  move_date: string | null; // tanggal pindah
+  move_destination: string | null; // pindah kemana
   created_at: string;
 };
 

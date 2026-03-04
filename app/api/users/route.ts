@@ -27,6 +27,7 @@ export async function GET(request: Request) {
         phone,
         address,
         created_at,
+        status_user,
         role
       `,
         { count: 'exact' },

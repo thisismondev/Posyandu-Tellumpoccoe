@@ -11,15 +11,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Ambil field yang ingin diupdate
     // Kita filter hanya field yang diizinkan agar aman
-    const { name, nik, gender, birth, height, weight, head, child_no } = body;
+    const { name, nik, gender, birth, height, weight, head, child_no, status, death_date, death_location, death_cause, move_date, move_destination } = body;
 
     // Validasi gender
     if (gender && gender !== 'L' && gender !== 'P') {
       return NextResponse.json({ success: false, error: 'Jenis kelamin harus L atau P' }, { status: 400 });
     }
 
-    // 1. Cek apakah anak ada
-    const { data: existingChild, error: checkError } = await supabaseAdmin.from('children').select('id').eq('id', id).single();
+    // 1. Cek apakah anak ada dan ambil status sebelumnya
+    const { data: existingChild, error: checkError } = await supabaseAdmin.from('children').select('id, status').eq('id', id).single();
 
     if (checkError || !existingChild) {
       return NextResponse.json({ success: false, error: 'Data anak tidak ditemukan' }, { status: 404 });
@@ -50,6 +50,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (weight !== undefined) updateData.weightKg = weight;
     if (head !== undefined) updateData.headCm = head;
     if (child_no !== undefined) updateData.child_no = child_no;
+    if (status !== undefined) updateData.status = status;
 
     // 4. Lakukan Update
     const { data: updatedChild, error: updateError } = await supabaseAdmin.from('children').update(updateData).eq('id', id).select().single();
@@ -57,6 +58,109 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (updateError) {
       console.error('Error updating child:', updateError);
       return NextResponse.json({ success: false, error: 'Gagal mengupdate data: ' + updateError.message }, { status: 500 });
+    }
+
+    // 5. Handle status changes - Insert to child_deceased or child_moved
+    if (status && status !== existingChild.status) {
+      // Status berubah menjadi Meninggal
+      if (status === 'Meninggal') {
+        if (!death_date || !death_location || !death_cause) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Tanggal meninggal, lokasi, dan penyebab harus diisi untuk status Meninggal',
+            },
+            { status: 400 },
+          );
+        }
+
+        // Cek apakah sudah ada record di child_deceased untuk child_id ini
+        const { data: existingDeceased } = await supabaseAdmin.from('child_deceased').select('id').eq('child_id', id).single();
+
+        if (existingDeceased) {
+          // Update existing record
+          const { error: updateDeceasedError } = await supabaseAdmin
+            .from('child_deceased')
+            .update({
+              death_date,
+              place: death_location,
+              reason: death_cause,
+            })
+            .eq('child_id', id);
+
+          if (updateDeceasedError) {
+            console.error('Error updating child_deceased:', updateDeceasedError);
+          }
+        } else {
+          // Insert new record
+          const { error: insertDeceasedError } = await supabaseAdmin.from('child_deceased').insert({
+            child_id: parseInt(id),
+            death_date,
+            place: death_location,
+            reason: death_cause,
+          });
+
+          if (insertDeceasedError) {
+            console.error('Error inserting to child_deceased:', insertDeceasedError);
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Gagal menyimpan data meninggal: ' + insertDeceasedError.message,
+              },
+              { status: 500 },
+            );
+          }
+        }
+      }
+
+      // Status berubah menjadi Pindah
+      if (status === 'Pindah') {
+        if (!move_date || !move_destination) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Tanggal pindah dan tujuan harus diisi untuk status Pindah',
+            },
+            { status: 400 },
+          );
+        }
+
+        // Cek apakah sudah ada record di child_moved untuk child_id ini
+        const { data: existingMoved } = await supabaseAdmin.from('child_moved').select('id').eq('child_id', id).single();
+
+        if (existingMoved) {
+          // Update existing record
+          const { error: updateMovedError } = await supabaseAdmin
+            .from('child_moved')
+            .update({
+              move_date,
+              move_to: move_destination,
+            })
+            .eq('child_id', id);
+
+          if (updateMovedError) {
+            console.error('Error updating child_moved:', updateMovedError);
+          }
+        } else {
+          // Insert new record
+          const { error: insertMovedError } = await supabaseAdmin.from('child_moved').insert({
+            child_id: parseInt(id),
+            move_date,
+            move_to: move_destination,
+          });
+
+          if (insertMovedError) {
+            console.error('Error inserting to child_moved:', insertMovedError);
+            return NextResponse.json(
+              {
+                success: false,
+                error: 'Gagal menyimpan data pindah: ' + insertMovedError.message,
+              },
+              { status: 500 },
+            );
+          }
+        }
+      }
     }
 
     return NextResponse.json({

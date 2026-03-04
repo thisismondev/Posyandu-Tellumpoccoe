@@ -9,6 +9,7 @@ export type Parent = {
   address: string | null;
   children_count: number;
   created_at: string;
+  status_user: String;
   role?: string;
 };
 

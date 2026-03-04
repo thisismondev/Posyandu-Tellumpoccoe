@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    // JOIN query dengan users table
+    // JOIN query dengan users table, child_deceased dan child_moved
     let query = supabaseAdmin.from('children').select(
       `
         id,
@@ -26,10 +26,20 @@ export async function GET(request: NextRequest) {
         weightKg,
         headCm,
         child_no,
+        status,
         created_at,
         users!inner (
           name,
           father_name
+        ),
+        child_deceased (
+          death_date,
+          place,
+          reason
+        ),
+        child_moved (
+          move_date,
+          move_to
         )
       `,
       { count: 'exact' },
@@ -98,6 +108,14 @@ export async function GET(request: NextRequest) {
         weightKg: child.weightKg,
         headCm: child.headCm,
         child_no: child.child_no,
+        status: child.status,
+        // Data from child_deceased table (array, take first element)
+        death_date: child.child_deceased?.[0]?.death_date || null,
+        death_location: child.child_deceased?.[0]?.place || null,
+        death_cause: child.child_deceased?.[0]?.reason || null,
+        // Data from child_moved table (array, take first element)
+        move_date: child.child_moved?.[0]?.move_date || null,
+        move_destination: child.child_moved?.[0]?.move_to || null,
         created_at: child.created_at,
       };
     });
